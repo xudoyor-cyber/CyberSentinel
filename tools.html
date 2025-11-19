@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyberSentinel | Tools & Interactive Lab</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #040404;
+      font-family: "Roboto Mono", monospace;
+      color: #00eaff;
+    }
+
+    /* NAVIGATION BAR */
+    nav {
+      text-align: center;
+      padding: 20px;
+      background: #0a0a0a;
+      box-shadow: 0 0 15px #00eaff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    nav a {
+      margin: 0 15px;
+      color: #00eaff;
+      text-decoration: none;
+      transition: 0.3s;
+      font-family: 'Orbitron', monospace;
+      letter-spacing: 1px;
+    }
+    nav a:hover {
+      text-shadow: 0 0 10px #08f7fe;
+    }
+
+    .scan-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(to bottom, #00eaff11, transparent);
+      animation: pulse 5s infinite ease-in-out;
+      z-index: -1;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
+    header {
+      text-align: center;
+      padding: 60px 20px 20px;
+    }
+
+    h1 {
+      font-size: 2.6rem;
+      text-shadow: 0 0 15px #00eaff, 0 0 25px #00eaff;
+    }
+
+    .subtitle {
+      color: #bd00ff;
+      text-shadow: 0 0 10px #bd00ff;
+      font-size: 1rem;
+    }
+
+    .tool-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .tool-card {
+      border: 1px solid #00eaff44;
+      background: #0c0c0c;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 0 12px #00eaff22;
+      transition: 0.3s;
+    }
+
+    .tool-card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 18px #00eaff55;
+    }
+
+    .tool-title {
+      font-size: 1.4rem;
+      color: #08f7fe;
+      margin-bottom: 10px;
+    }
+
+    .tool-desc {
+      color: #d6d6d6;
+      margin-bottom: 15px;
+      line-height: 1.5rem;
+    }
+
+    .tool-btn {
+      padding: 10px 18px;
+      border: 2px solid #00eaff;
+      color: #00eaff;
+      text-decoration: none;
+      border-radius: 6px;
+      box-shadow: 0 0 8px #00eaff55;
+      transition: 0.2s;
+      display: inline-block;
+      margin-top: 5px;
+      width: fit-content;
+    }
+
+    .tool-btn:hover {
+      background: #00eaff;
+      color: #040404;
+      box-shadow: 0 0 14px #00eaff;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px;
+      opacity: 0.6;
+      color: #08f7fe;
+    }
+  </style>
+</head>
+<body>
+  <div class="scan-glow"></div>
+
+  <!-- NAVIGATION BAR ADDED -->
+  <nav>
+    <a href="index.html" target="_blank">Home</a>
+    <a href="tutorials.html" target="_blank">Tutorials</a>
+    <a href="awareness.html" target="_blank">Awareness Hub</a>
+    <a href="tools.html" target="_blank">Tools & Lab</a>
+    <a href="about.html" target="_blank">About</a>
+    <a href="contact.html" target="_blank">Contact</a>
+  </nav>
+
+  <header>
+    <h1>Tools & Interactive Lab</h1>
+    <p class="subtitle">Hands-on utilities to sharpen your cybersecurity instincts</p>
+  </header>
+
+  <div class="tool-container">
+
+    <div class="tool-card">
+      <h2 class="tool-title">🔍 URL Safety Checker</h2>
+      <p class="tool-desc">Paste any link and this tool analyzes common phishing indicators. Great for teaching users how to spot shady URLs.</p>
+      <a href="#" class="tool-btn">Launch Tool</a>
+    </div>
+
+    <div class="tool-card">
+      <h2 class="tool-title">🖥️ Hash Generator & Verifier</h2>
+      <p class="tool-desc">Upload a file or paste text to generate hashes (SHA-256, MD5, etc.). Perfect for integrity checks and awareness training.</p>
+      <a href="#" class="tool-btn">Launch Tool</a>
+    </div>
+
+    <div class="tool-card">
+      <h2 class="tool-title">📡 Wi-Fi Security Tester</h2>
+      <p class="tool-desc">A legal, simulated environment that teaches users to identify weak Wi-Fi configurations and fix them.</p>
+      <a href="#" class="tool-btn">Launch Tool</a>
+    </div>
+
+    <div class="tool-card">
+      <h2 class="tool-title">🔐 Password Strength Analyzer</h2>
+      <p class="tool-desc">Enter a fake or practice password and get an instant analysis of its weaknesses and estimated cracking time.</p>
+      <a href="#" class="tool-btn">Launch Tool</a>
+    </div>
+
+    <div class="tool-card">
+      <h2 class="tool-title">🧠 Phishing Scenario Simulator</h2>
+      <p class="tool-desc">Interactive quizzes that show realistic phishing emails and ask the user to decide: safe or scam?</p>
+      <a href="#" class="tool-btn">Start Simulation</a>
+    </div>
+
+  </div>
+
+  <footer>
+    © 2025 CyberSentinel — Tools forged in neon and paranoia
+  </footer>
+</body>
+</html>
