@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Safety Checker</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- Tailwind CDN, работает локально и на Pages -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function UrlSafetyChecker() {
+      const [input, setInput] = useState("");
+      const [results, setResults] = useState(null);
+
+      function scoreSeverity(severityCounts) {
+        return (
+          severityCounts.critical * 5 +
+          severityCounts.high * 3 +
+          severityCounts.medium * 2 +
+          severityCounts.low * 1
+        );
+      }
+
+      function analyze(raw) {
+        const urlText = (raw || "").trim();
+        if (!urlText) return setResults({ error: "Please paste a URL to analyze." });
+        let working = urlText;
+        if (!/^https?:\/\//i.test(working)) working = "http://" + working;
+
+        let parsed;
+        try {
+          parsed = new URL(working);
+        } catch (e) {
+          return setResults({ error: "Invalid URL format — can't parse." });
+        }
+
+        const host = parsed.hostname;
+        const indicators = [];
+        const severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+
+        function flag(msg, level = "low") {
+          indicators.push({ msg, level });
+          severityCounts[level] = (severityCounts[level] || 0) + 1;
+        }
+
+        if (parsed.username || parsed.password) flag("URL contains embedded credentials (user:pass@host).", "critical");
+        if (raw.includes("@")) flag("URL includes '@' which can hide the real host.", "high");
+        if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) flag("Host is a raw IP address.", "high");
+        if (/^xn--/i.test(host)) flag("Punycode detected — possible IDN homograph.", "high");
+
+        const subdomainCount = host.split('.').length - 2;
+        if (subdomainCount >= 3) flag(`Many subdomains detected (${subdomainCount}).`, "medium");
+        if (host.length > 60) flag("Very long hostname.", "medium");
+        if (/-{2,}/.test(host)) flag("Multiple hyphens in domain.", "low");
+
+        const shorteners = ["bit.ly","tinyurl.com","t.co","goo.gl","ow.ly","buff.ly","is.gd","soo.gd","s2r.co","rb.gy"];
+        if (shorteners.some(s => host.toLowerCase().endsWith(s))) flag("URL uses a link shortener.", "medium");
+
+        const suspiciousWords = ["secure","account","update","verify","login","bank","confirm","ebay","paypal","appleid","signin", "reset"];
+        const combined = (host + parsed.pathname + parsed.search).toLowerCase();
+        const foundWords = suspiciousWords.filter(w => combined.includes(w));
+        if (foundWords.length) flag(`Suspicious keywords: ${foundWords.join(", ")}.`, "medium");
+
+        if (/%[0-9A-Fa-f]{2}/.test(raw)) flag("Percent-encoded characters detected.", "low");
+        if (parsed.search && parsed.search.length > 80) flag("Very long query string.", "low");
+        if (parsed.port && parsed.port !== "80" && parsed.port !== "443") flag(`Non-standard port: ${parsed.port}.`, "low");
+
+        const uncommonTLDs = [".zip", ".review", ".country", ".kim", ".top", ".xyz", ".work", ".loan", ".tokyo", ".pw"];
+        const hostTld = '.' + host.split('.').slice(-1)[0];
+        if (uncommonTLDs.includes(hostTld)) flag(`Unusual TLD '${hostTld}'.`, "medium");
+
+        const brandNames = ["paypal","amazon","microsoft","google","apple","bank","facebook","instagram","youtube","linkedin"];
+        for (const brand of brandNames) {
+          if (host.includes(brand) && !host.endsWith(brand + ".com") && !host.endsWith(brand + ".net") && !host.includes(brand + ".")) {
+            flag(`Brand token '${brand}' appears in hostname but not as root domain.`, "high");
+          }
+        }
+
+        if (/\.(exe|scr|zip|rar|msi|cmd|bat)$/i.test(parsed.pathname)) flag("Link points to executable-like file.", "critical");
+
+        const score = scoreSeverity(severityCounts);
+        let rating = "Safe-ish";
+        if (score >= 15) rating = "Very suspicious";
+        else if (score >= 8) rating = "Suspicious";
+        else if (score >= 4) rating = "Watch closely";
+
+        const tips = [
+          "Always hover over links to see the real destination.",
+          "Don’t rush — phishers use urgency.",
+          "If asked to 'verify' account info, go to official site manually.",
+          "When in doubt, navigate directly to the organization’s site."
+        ];
+
+        const domainSummary = {
+          original: raw,
+          displayedForUser: parsed.href,
+          hostname: host,
+          pathname: parsed.pathname,
+          search: parsed.search,
+          protocol: parsed.protocol,
+        };
+
+        setResults({ indicators, severityCounts, score, rating, tips, domainSummary });
+      }
+
+      return (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h1 className="text-2xl font-bold mb-2">URL Safety Checker</h1>
+            <textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Paste URL here" className="w-full border rounded-lg p-3 mb-3 text-sm h-28" />
+            <div className="flex gap-2">
+              <button onClick={() => analyze(input)} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Analyze</button>
+              <button onClick={() => { setInput(""); setResults(null); }} className="px-4 py-2 rounded-lg border">Reset</button>
+            </div>
+
+            {results && results.error && <div className="mt-4 p-3 bg-red-50 text-red-700 rounded">{results.error}</div>}
+
+            {results && !results.error && (
+              <div className="mt-6">
+                <p>Rating: <strong>{results.rating}</strong> — Score: <code>{results.score}</code></p>
+                <ul className="mt-2">
+                  {results.indicators.map((it,i) => <li key={i}>{it.msg} (Level: {it.level})</li>)}
+                </ul>
+                <h3 className="mt-4">Tips</h3>
+                <ul>{results.tips.map((t,i) => <li key={i}>{t}</li>)}</ul>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<UrlSafetyChecker />);
+  </script>
+</body>
+</html>
