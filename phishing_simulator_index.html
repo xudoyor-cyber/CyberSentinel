@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phishing Scenario Simulator — index.html</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--accent:#0b57d0;--danger:#c92a2a}
+    *{box-sizing:border-box}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; background:linear-gradient(180deg,var(--bg),#eef2ff); color:#0f172a}
+    .wrap{max-width:980px;margin:32px auto;padding:20px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 0;color:var(--muted)}
+
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(17,24,39,0.06);}
+    .layout{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:18px}
+
+    .email-frame{border:1px solid #e6eefb;border-radius:10px;padding:16px;background:linear-gradient(180deg,#fff,#fbfdff)}
+    .meta{display:flex;gap:12px;align-items:center}
+    .avatar{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#eef2ff,#dbeafe);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0b57d0}
+    .from{font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
+
+    .body{margin-top:12px;padding:12px;border-radius:8px;background:#fcfdff}
+    .link{color:var(--accent);text-decoration:underline;cursor:pointer}
+    .spoiler{font-family:monospace;background:#eef2ff;padding:2px 6px;border-radius:6px}
+
+    .controls{display:flex;gap:10px;margin-top:12px}
+    button.btn{flex:1;padding:10px 12px;border-radius:8px;border:0;font-weight:700;cursor:pointer}
+    .btn.safe{background:#ecfdf5;color:#065f46}
+    .btn.scam{background:#fff1f2;color:var(--danger);border:1px solid #fbcaca}
+    .btn.next{background:var(--accent);color:white}
+
+    .right .rules{margin-bottom:12px}
+    .progress{height:10px;background:#eef2ff;border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,#6ea8ff,#3b82f6);width:0%}
+    .result{margin-top:12px}
+
+    .explain{margin-top:12px;padding:10px;border-radius:8px;background:#fff7ed;color:#92400e;border:1px solid #ffedd5}
+    .score{font-size:18px;font-weight:800}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+
+    @media (max-width:900px){.layout{grid-template-columns:1fr}.right{order:2}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Phishing Scenario Simulator</h1>
+        <p class="lead">Interactive quizzes: see an email, decide — safe or scam.</p>
+      </div>
+      <div class="small">Ready to test? 🔎</div>
+    </header>
+
+    <div class="layout">
+      <main>
+        <div class="card">
+          <div class="email-frame" id="emailFrame">
+            <!-- Email content gets rendered here -->
+          </div>
+
+          <div class="controls">
+            <button class="btn safe" id="btnSafe">SAFE</button>
+            <button class="btn scam" id="btnScam">SCAM</button>
+            <button class="btn next" id="btnNext" style="flex:0.6">NEXT</button>
+          </div>
+
+          <div class="result" id="resultArea"></div>
+
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+            <button id="resetBtn" style="padding:8px;border-radius:8px">Restart</button>
+            <button id="downloadBtn" style="padding:8px;border-radius:8px">Download scenarios (JSON)</button>
+            <button id="toggleHints" style="padding:8px;border-radius:8px">Toggle Hints</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;font-size:13px;color:var(--muted)">
+          Tip: hover links to see the real URL. Look for small mismatches — subdomains, odd top-level domains, poor grammar, urgent language.
+        </div>
+      </main>
+
+      <aside class="right">
+        <div class="card">
+          <div class="rules">
+            <strong>Progress</strong>
+            <div class="progress" aria-hidden="true" style="margin-top:8px"><i id="progressBar"></i></div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px"><span id="qNum">0/0</span><span class="score">Score: <span id="score">0</span></span></div>
+          </div>
+
+          <div class="card" style="margin-top:10px;padding:12px">
+            <strong>Hints</strong>
+            <div id="hints" style="margin-top:8px;color:var(--muted);font-size:13px">
+              <ul>
+                <li>Check sender address and reply-to.</li>
+                <li>Inspect the real link target (hover).</li>
+                <li>Beware of urgent or reward language.</li>
+                <li>Attachments from unknown senders = suspicious.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;text-align:center">
+            <small class="small">Made to train awareness. Customize scenarios inside the index file.</small>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div>Made by Sirojiddinov Khudoyor, for rising awareness of people about phishing.</div>
+    </footer>
+  </div>
+
+  <script>
+    // -----------------------------
+    // CONFIG: scenarios array
+    // Each scenario: {fromName, fromEmail, replyTo, subject, preview, bodyHtml, realLinks: [{text, href}], explanation, isPhish}
+    // You can edit/add scenarios directly in this file.
+    // -----------------------------
+
+    const SCENARIOS = [
+      // --- added scenarios ---
+      {
+        fromName: 'IT Support',
+        fromEmail: 'it-helpdesk@company-security.com',
+        replyTo: 'support@company.com',
+        subject: 'Password Expiration Notice',
+        preview: 'Your password expires today',
+        bodyHtml: `Hello,<br><br>Your password expires today. To avoid losing access, reset it immediately using the link below:<br><br><a class="link" data-href="http://company-security-reset.com/pass">http://company-security-reset.com/pass</a><br><br>IT Support Team`,
+        realLinks: [{text:'http://company-security-reset.com/pass', href:'http://fake-reset.biz/steal'}],
+        explanation:'Domain doesn’t match the real company, uses fear of losing access, and the link redirects somewhere else. Classic phishing move.',
+        isPhish:true
+      },
+      {
+        fromName:'Google Storage',
+        fromEmail:'no-reply@google-storage-alert.com',
+        replyTo:'no-reply@google.com',
+        subject:'Your Drive is almost full',
+        preview:'Free up space now',
+        bodyHtml:`Hi,<br><br>Your Google Drive is reaching storage limits. Click below to review files:<br><br><a class="link" data-href="http://google-storage-alert.com/review">http://google-storage-alert.com/review</a>`,
+        realLinks:[{text:'http://google-storage-alert.com/review', href:'http://scam-download.com'}],
+        explanation:'Google never uses weird hyphenated domains for alerts, and the reply-to mismatch is shady.',
+        isPhish:true
+      },
+      {
+        fromName:'Your Bank',
+        fromEmail:'alerts@secure-bank.co',
+        replyTo:'alerts@secure-bank.co',
+        subject:'Suspicious login attempt detected',
+        preview:'Verify your identity',
+        bodyHtml:`Dear customer,<br><br>We detected unusual activity on your account. Please verify your identity:<br><br><a class="link" data-href="http://secure-bank.co/verify">http://secure-bank.co/verify</a>`,
+        realLinks:[{text:'http://secure-bank.co/verify', href:'http://phish-money.com'}],
+        explanation:'Banks rarely send verification links directly and the domain isn’t the real bank’s domain.',
+        isPhish:true
+      },
+      {
+        fromName:'Dropbox',
+        fromEmail:'notify@dropbox.com',
+        replyTo:'notify@dropbox.com',
+        subject:'Shared file: Q4 Budget.xlsx',
+        preview:'A file was shared with you',
+        bodyHtml:`You’ve received a shared file:<br><br><a class="link" data-href="https://dropbox.com/shared/Q4-budget">Open file</a>`,
+        realLinks:[],
+        explanation:'Legit-looking sender, correct domain, normal tone — this one seems safe.',
+        isPhish:false
+      },
+      {
+        fromName:'Amazon',
+        fromEmail:'no-reply@amzon-support.com',
+        replyTo:'support@amazon.com',
+        subject:'Order Issue: Action Required',
+        preview:'Your recent order has a problem',
+        bodyHtml:`Hello,<br><br>Your recent order has an issue processing payment. Please confirm billing details:<br><br><a class="link" data-href="http://amzon-support.com/login">http://amzon-support.com/login</a>`,
+        realLinks:[{text:'http://amzon-support.com/login', href:'http://steal-creds.net'}],
+        explanation:'Domain is misspelled (amzon). Fake payment issues are a common lure.',
+        isPhish:true
+      },
+      {
+        fromName:'Teams Notifications',
+        fromEmail:'notifications@microsoft.com',
+        replyTo:'notifications@microsoft.com',
+        subject:'You were mentioned in a message',
+        preview:'Someone tagged you in Teams',
+        bodyHtml:`You were mentioned in a Teams message:<br><br><a class="link" data-href="https://teams.microsoft.com/message?id=123">Open message</a>`,
+        realLinks:[],
+        explanation:'Legitimate domain and normal context — looks safe.',
+        isPhish:false
+      },
+      {
+        fromName:'PayPal',
+        fromEmail:'service@paypall.com',
+        replyTo:'service@paypal.com',
+        subject:'Your account has been limited',
+        preview:'Please restore access',
+        bodyHtml:`Dear user,<br><br>We have temporarily limited your account. Restore access here:<br><br><a class="link" data-href="http://paypall.com/restore">http://paypall.com/restore</a>`,
+        realLinks:[{text:'http://paypall.com/restore', href:'http://stolen-access.me'}],
+        explanation:'Extra “l” in domain (paypall), urgent request, and suspicious restore link.',
+        isPhish:true
+      },
+      // --- end added scenarios ---
+      
+      {
+        fromName: 'HR Department',
+        fromEmail: 'hr-updates@company-payments.com',
+        replyTo: 'hr@company.com',
+        subject: 'URGENT: Update your payroll information',
+        preview: 'Please update your payroll to avoid a hold',
+        bodyHtml: `Dear employee,<br><br>We noticed an issue with your payroll and require immediate verification. Please click the link below to confirm your details to avoid suspension of salary.<br><br><a class="link" data-href="https://company-payments.verify-now.com/confirm">https://company-payments.verify-now.com/confirm</a><br><br>Best regards,<br>HR Team`,
+        realLinks: [{text:'https://company-payments.verify-now.com/confirm', href:'https://verify-now.com/evil?uid=123'}],
+        explanation: 'Sender name looks like HR, but the from-address uses a suspicious domain and the actual link redirects to a third-party site. Also urgent pressure to act — classic phishing.',
+        isPhish: true
+      },
+      {
+        fromName: 'Alice — Colleague',
+        fromEmail: 'alice@company.com',
+        replyTo: 'alice@company.com',
+        subject: 'Meeting notes',
+        preview: 'Here are the notes from today',
+        bodyHtml: `Hi —<br><br>Attaching the meeting notes as promised. Let me know if you'd like edits.<br><br>Attachment: <span class="spoiler">notes_q4.pdf</span>`,
+        realLinks: [],
+        explanation: 'Trusted sender address and normal tone. No suspicious links or urgent asks. This appears safe — but still verify attachments with known senders.',
+        isPhish: false
+      },
+      {
+        fromName: 'Security Alert',
+        fromEmail: 'security@microsofft.com',
+        replyTo: 'security@microsofft.com',
+        subject: 'Your account will be disabled',
+        preview: 'We detected unusual sign-in activity',
+        bodyHtml: `Dear user,<br><br>We detected unusual sign-in activity. To restore access, verify your account now:<br><br><a class="link" data-href="http://microsoft-login.secure-account.net/verify">http://microsoft-login.secure-account.net/verify</a><br><br>If you did not perform this action, ignore this message.`,
+        realLinks: [{text:'http://microsoft-login.secure-account.net/verify', href:'http://malicious.example/steal'}],
+        explanation: 'Domain misspells Microsoft (microsofft) and link target is unrelated. Also lacking personalization — typical scam.',
+        isPhish: true
+      }
+    ];
+
+    // UI state
+    let idx = 0, score = 0, showHints = true;
+
+    const emailFrame = document.getElementById('emailFrame');
+    const qNum = document.getElementById('qNum');
+    const scoreEl = document.getElementById('score');
+    const progressBar = document.getElementById('progressBar');
+    const resultArea = document.getElementById('resultArea');
+    const hintsEl = document.getElementById('hints');
+
+    function render(){
+      const s = SCENARIOS[idx];
+      qNum.textContent = `${idx+1}/${SCENARIOS.length}`;
+      const pct = Math.round((idx/SCENARIOS.length)*100);
+      progressBar.style.width = pct + '%';
+      scoreEl.textContent = score;
+
+      // build email HTML - intentionally realistic: display one URL but set data-href -> hover reveals real href
+      const html = `
+        <div class="meta">
+          <div class="avatar">${escapeInitials(s.fromName)}</div>
+          <div>
+            <div class="from">${escapeHtml(s.fromName)} <span style="font-weight:400;color:var(--muted)">&lt;${escapeHtml(s.fromEmail)}&gt;</span></div>
+            <div class="small">${escapeHtml(s.subject)}</div>
+          </div>
+        </div>
+        <div class="body">${s.bodyHtml}
+          <div style="margin-top:10px;color:var(--muted);font-size:13px">Preview: ${escapeHtml(s.preview)}</div>
+        </div>
+      `;
+
+      emailFrame.innerHTML = html;
+
+      // attach hover handlers for links to show real href in a tooltip-like element
+      const links = emailFrame.querySelectorAll('.link');
+      links.forEach((a,i)=>{
+        const real = s.realLinks[i] ? s.realLinks[i].href : a.dataset.href || a.getAttribute('href') || '#';
+        a.addEventListener('mouseenter', (e)=>showTooltip(e, real));
+        a.addEventListener('mouseleave', hideTooltip);
+        a.addEventListener('click', (ev)=>{ev.preventDefault(); alert('This is a simulator — link not opened. Real target: '+real)});
+      });
+
+      resultArea.innerHTML = '';
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, (c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;" })[c]) }
+    function escapeInitials(name){ return (name||' ').split(' ').map(x=>x[0]||'').slice(0,2).join('').toUpperCase() }
+
+    function showTooltip(e, text){
+      let tip = document.getElementById('__tip');
+      if(!tip){ tip = document.createElement('div'); tip.id='__tip'; tip.style.position='fixed'; tip.style.padding='8px 10px'; tip.style.background='#0b1220'; tip.style.color='white'; tip.style.borderRadius='6px'; tip.style.fontSize='13px'; tip.style.zIndex=9999; document.body.appendChild(tip); }
+      tip.textContent = text; positionTip(e, tip);
+    }
+    function positionTip(e, tip){ const pad=10; let x=e.clientX+pad, y=e.clientY+pad; if(x+tip.offsetWidth>innerWidth) x = innerWidth - tip.offsetWidth - pad; if(y+tip.offsetHeight>innerHeight) y = innerHeight - tip.offsetHeight - pad; tip.style.left = x+'px'; tip.style.top = y+'px'; }
+    function hideTooltip(){ const tip = document.getElementById('__tip'); if(tip) tip.remove(); }
+
+    document.getElementById('btnSafe').addEventListener('click', ()=>answer(false));
+    document.getElementById('btnScam').addEventListener('click', ()=>answer(true));
+    document.getElementById('btnNext').addEventListener('click', nextQ);
+    document.getElementById('resetBtn').addEventListener('click', ()=>{idx=0;score=0;render();updateProgress();});
+    document.getElementById('toggleHints').addEventListener('click', ()=>{showHints=!showHints; hintsEl.style.display = showHints ? 'block' : 'none';});
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(SCENARIOS,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='scenarios.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    function answer(choiceIsPhish){
+      const s = SCENARIOS[idx];
+      const correct = choiceIsPhish === s.isPhish;
+      if(correct){ score += 1; }
+      // show explanation
+      resultArea.innerHTML = `<div class="explain"><strong>${correct? 'Correct ✅':'Incorrect ⛔'}</strong><div style="margin-top:8px">${escapeHtml(s.explanation)}</div></div>`;
+      updateProgress();
+    }
+
+    function updateProgress(){
+      const pct = Math.round(((idx+1)/SCENARIOS.length)*100);
+      progressBar.style.width = pct + '%';
+      qNum.textContent = `${idx+1}/${SCENARIOS.length}`;
+      scoreEl.textContent = score;
+    }
+
+    function nextQ(){
+      if(idx < SCENARIOS.length - 1){ idx++; render(); } else { showFinal(); }
+    }
+
+    function showFinal(){
+      emailFrame.innerHTML = `<div style="padding:18px;text-align:center"><h2>Finished</h2><p class="small">You scored ${score} out of ${SCENARIOS.length}</p><p class="small">Review scenarios, edit the SCENARIOS array to add more practice emails.</p></div>`;
+      resultArea.innerHTML = '';
+      progressBar.style.width = '100%';
+      qNum.textContent = `${SCENARIOS.length}/${SCENARIOS.length}`;
+    }
+
+    // initial render
+    render(); updateProgress();
+
+    // accessibility: keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if(e.key==='s') document.getElementById('btnSafe').click();
+      if(e.key==='d') document.getElementById('btnScam').click();
+      if(e.key==='n') document.getElementById('btnNext').click();
+    });
+
+    // make tooltip follow mouse
+    document.addEventListener('mousemove', (e)=>{ const tip = document.getElementById('__tip'); if(tip) positionTip(e, tip); });
+
+  </script>
+</body>
+</html>
