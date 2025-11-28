@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wi‑Fi Security Tester — index.html</title>
+  <style>
+    :root{
+      --bg:#0d1117;
+      --card:#161b22;
+      --accent:#2389ff;
+      --danger:#ff4d4d;
+      --good:#4ade80;
+      --muted:#8b949e;
+      --text:#e6edf3;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1000px;margin:auto;padding:24px}
+    header h1{margin:0;font-size:26px}
+    header p{margin:6px 0 0;color:var(--muted)}
+
+    .card{background:var(--card);padding:20px;border-radius:14px;box-shadow:0 0 20px rgba(0,0,0,.4)}
+    .layout{display:grid;grid-template-columns:1fr 320px;gap:20px;margin-top:20px}
+
+    .wifiBox{border:1px solid #30363d;border-radius:12px;padding:16px;background:#0f141b}
+    .ssid{font-size:20px;font-weight:700}
+    .muted{color:var(--muted);font-size:13px}
+    .body{margin-top:12px;font-size:15px}
+
+    .controls button{padding:10px 12px;border:none;border-radius:8px;font-weight:700;cursor:pointer}
+    .btn-good{background:var(--good);color:#000}
+    .btn-bad{background:var(--danger);color:#fff}
+    .btn-next{background:var(--accent);color:#fff}
+    .controls{display:flex;gap:12px;margin-top:16px;align-items:center}
+    .controls button{min-width:88px}
+    .btn-reset{background:#0b1220;border:1px solid #2b3138;color:var(--text);padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:700}
+    .controls button:hover{transform:translateY(-2px);transition:transform .12s ease}
+
+    .explain{margin-top:14px;padding:12px;background:#2d1f1f;border:1px solid #5a2b2b;border-radius:8px}
+
+    .progress{height:10px;background:#2d333b;border-radius:999px;overflow:hidden;margin-top:10px}
+    .progress i{display:block;height:100%;background:var(--accent);width:0%}
+
+    footer{margin-top:20px;color:var(--muted);font-size:13px;text-align:center}
+
+    @media(max-width:900px){.layout{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Wi‑Fi Security Tester</h1>
+      <p>A safe, simulated environment to learn how to spot weak Wi‑Fi setups and fix them.</p>
+    </header>
+
+    <div class="layout">
+      <main>
+        <div class="card">
+          <div class="wifiBox" id="wifiBox"></div>
+
+          <div class="controls">
+            <button class="btn-good" id="btnSafe">SECURE</button>
+            <button class="btn-bad" id="btnUnsafe">UNSAFE</button>
+            <button class="btn-next" id="btnNext">NEXT</button>
+            <button id="btnReset" class="btn-reset">RESET</button>
+          </div>
+
+          <div id="result"></div>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <strong>Progress</strong>
+          <div class="progress"><i id="progressBar"></i></div>
+          <div style="margin-top:8px;display:flex;justify-content:space-between">
+            <span id="qNum">0/0</span>
+            <span id="scoreText">Score: 0</span>
+          </div>
+
+          <div style="margin-top:18px">
+            <strong>Common Weak Spots</strong>
+            <ul class="muted" style="font-size:13px;line-height:1.4;margin-top:8px">
+              <li>WEP encryption (super outdated)</li>
+              <li>Default SSID or admin password</li>
+              <li>Open networks without passwords</li>
+              <li>Weak passwords (12345678, qwerty123)</li>
+              <li>Guest network without isolation</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Upload as <code>index.html</code> to GitHub Pages to publish instantly.
+    </footer>
+  </div>
+
+  <script>
+    // -- scenarios (single authoritative array) --
+    const SCENARIOS = [
+      { ssid:'CoffeeShop_WiFi', details:'Open network — no password required.', explanation:'Open Wi‑Fi means anyone can intercept your traffic. Avoid using or enable WPA3/WPA2.', unsafe:true },
+      { ssid:'HomeNetwork_2.4G', details:'WEP encryption enabled.', explanation:'WEP is completely broken and can be cracked in minutes. Always use WPA2 or WPA3.', unsafe:true },
+      { ssid:'MyRouter5G', details:'WPA2‑PSK, strong password, guest network isolation enabled.', explanation:'Solid configuration — strong encryption and proper isolation.', unsafe:false },
+      { ssid:'Linksys123', details:'Default SSID and default admin password.', explanation:'Defaults make it trivial for attackers to guess login pages. Always customize both.', unsafe:true },
+      { ssid:'OfficeGuest', details:'Guest Wi‑Fi with segregation enabled, WPA2 password required.', explanation:'Good setup — visitors cannot access internal devices.', unsafe:false },
+      { ssid:'SmartHomeHub', details:'WPA2‑PSK, but password is "password123".', explanation:'Weak passwords are easy to brute‑force. Needs a stronger phrase.', unsafe:true },
+      { ssid:'Campus_WiFi', details:'Enterprise WPA2‑EAP with certificate auth.', explanation:'Secure enterprise‑grade configuration.', unsafe:false },
+
+      { ssid:'CoffeeShop_Guest', details:'WPA2‑PSK with weak shared password ("coffeeshop123").', explanation:'Shared weak passwords are easily guessable. Use a strong passphrase and rotate it.', unsafe:true },
+      { ssid:'Printer_Setup', details:'Open temporary setup network.', explanation:'Open networks expose devices during setup. Enable WPA2/3 immediately.', unsafe:true },
+      { ssid:'IoT_HomeHub', details:'WEP encryption still enabled.', explanation:'WEP is obsolete. Upgrade to WPA2/WPA3.', unsafe:true },
+      { ssid:'GamingRoom_5GHz', details:'WPA3, strong password.', explanation:'Secure modern configuration.', unsafe:false },
+      { ssid:'SmartTV_Setup', details:'WPA2‑PSK but weak password ("password1").', explanation:'Weak passwords are vulnerable to brute‑force attacks.', unsafe:true },
+      { ssid:'Warehouse_WiFi', details:'WPA2‑Enterprise but legacy fallback active.', explanation:'Legacy fallback weakens security. Disable fallback modes.', unsafe:true },
+      { ssid:'Airport_FreeWiFi', details:'Open public network.', explanation:'High risk of MITM attacks. Avoid sensitive activities.', unsafe:true },
+      { ssid:'Office_Backup_AP', details:'Password reused across devices.', explanation:'Password reuse increases exposure. Use unique credentials.', unsafe:true },
+      { ssid:'StudioMesh_Node', details:'WPA3, strong password.', explanation:'Fully secure.', unsafe:false },
+      { ssid:'Hotel_StaffNet', details:'WPA2‑PSK with outdated password ("Hotel2020").', explanation:'Regular rotations required to maintain security.', unsafe:true },
+      { ssid:'DroneControl_AP', details:'Weak password for critical system.', explanation:'Critical networks require extremely strong passwords.', unsafe:true },
+      { ssid:'WISP_Tower', details:'WPA2‑Enterprise with old fallback.', explanation:'Disable fallback to maintain full security.', unsafe:true },
+      { ssid:'HomeLab_AP', details:'WPA3, secured.', explanation:'Ideal setup.', unsafe:false }
+    ];
+
+    // -- state & DOM refs --
+    let i=0, score=0;
+    const box=document.getElementById('wifiBox');
+    const result=document.getElementById('result');
+    const qNum=document.getElementById('qNum');
+    const scoreText=document.getElementById('scoreText');
+    const bar=document.getElementById('progressBar');
+
+    function render(){
+      const s = SCENARIOS[i];
+      qNum.textContent = `${i+1}/${SCENARIOS.length}`;
+      bar.style.width = Math.round(((i)/SCENARIOS.length)*100) + '%';
+      scoreText.textContent = 'Score: ' + score;
+
+      box.innerHTML = `
+        <div class="ssid">${escapeHtml(s.ssid)}</div>
+        <div class="muted">${escapeHtml(s.details)}</div>
+      `;
+      result.innerHTML = '';
+    }
+
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
+    function answer(isUnsafe){
+      const s = SCENARIOS[i];
+      const correct = isUnsafe === s.unsafe;
+      if(correct) score++;
+      result.innerHTML = `<div class="explain"><strong>${correct? 'Correct ✔':'Incorrect ✖'}</strong><br>${escapeHtml(s.explanation)}</div>`;
+      scoreText.textContent = 'Score: ' + score;
+    }
+
+    // -- handlers --
+    document.getElementById('btnSafe').onclick = () => answer(false);
+    document.getElementById('btnUnsafe').onclick = () => answer(true);
+    document.getElementById('btnNext').onclick = () => {
+      if(i < SCENARIOS.length - 1){
+        i++; render();
+      } else {
+        // final screen
+        box.innerHTML = `<h2>Done!</h2><p>You scored ${score} / ${SCENARIOS.length}</p>`;
+        result.innerHTML = '';
+        bar.style.width = '100%';
+        qNum.textContent = `${SCENARIOS.length}/${SCENARIOS.length}`;
+      }
+    };
+
+    // Reset logic (in-place): set index and score to zero and re-render
+    const btnReset = document.getElementById('btnReset');
+    if(btnReset){
+      btnReset.addEventListener('click', ()=>{
+        i = 0; score = 0; render();
+        bar.style.width = Math.round(((i)/SCENARIOS.length)*100) + '%';
+        result.innerHTML = '';
+      });
+    }
+
+    // initial render
+    render();
+  </script>
+
+</body>
+</html>
